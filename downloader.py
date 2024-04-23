@@ -2,9 +2,9 @@
 This module provides functionality to download and manage media from album URLs.
 It supports asynchronous downloads, database caching, and error handling.
 """
+
 import asyncio
 import json
-import sys
 import urllib.parse
 import aiohttp
 import shutil
@@ -75,13 +75,15 @@ def get_all_album_urls() -> list:
     cursor.execute("SELECT url FROM album_urls")
     rows = cursor.fetchall()
     return [row[0] for row in rows]
-    
+
+
 def delete_album_url(url: str):
     global db_connection
     cursor = db_connection.cursor()
     cursor.execute("DELETE FROM album_urls WHERE url = ?", (url,))
     db_connection.commit()
     print(f"Deleted URL: {url}")
+
 
 def get_cache_info(url):
     global db_connection
@@ -351,10 +353,10 @@ def main() -> None:
             # Displaying consolidated choices for actions
             choice = input("Your choice (or 'a' to add, 'd' to delete, 'x' to exit): ")
 
-            if choice == 'a':
+            if choice == "a":
                 album_url = input("Enter the new album URL: ")
                 save_album_url(album_url)
-            elif choice == 'd':
+            elif choice == "d":
                 if album_urls:
                     delete_choice = input("Enter the number of the URL to delete: ")
                     try:
@@ -368,12 +370,15 @@ def main() -> None:
                         print("Invalid number entered. Please enter a valid number.")
                 else:
                     print("No URLs to delete.")
-            elif choice == 'x':
+            elif choice == "x":
                 print("You have exited the script.")
                 break
             elif choice.isdigit() and 1 <= int(choice) <= len(album_urls):
                 album_url = album_urls[int(choice) - 1]
-                if input("Does the album have a password? (y/n): ").strip().lower() == "y":
+                if (
+                    input("Does the album have a password? (y/n): ").strip().lower()
+                    == "y"
+                ):
                     password = input("Enter the password: ")
                 else:
                     password = None
@@ -395,6 +400,7 @@ def main() -> None:
         print(f"Error occurred: {e}")
     finally:
         close_db()
+
 
 if __name__ == "__main__":
     main()

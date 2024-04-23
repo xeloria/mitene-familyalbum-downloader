@@ -5,8 +5,7 @@ Download media from [Mitene](https://mitene.us/) & [Family Album](https://family
 
 
 ## Demo
-
-https://github.com/suasive93/mitene-familyalbum-downloader/assets/20932109/b4a18746-ea8c-4785-87d2-5ecb28ed10d9
+![gif](https://github.com/suasive93/mitene-familyalbum-downloader/assets/20932109/9c313b0f-6b36-4e35-9c81-b612e07aa2e7)
 
 ## Requirements
 - Python 3.11 and up.

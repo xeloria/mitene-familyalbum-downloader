@@ -9,13 +9,13 @@ Download media from [Mitene](https://mitene.us/) & [Family Album](https://family
 
 ![mitene downloader-min](https://github.com/suasive93/mitene_download_2/assets/20932109/b280a991-3a8b-447b-aa3e-1ae0ab5aa71e)
 ## Requirements
-- Python 3.8.5 and up.
+- Python 3.11 and up.
 
 ## Installation
 
 - Install python.
 - Clone the git repo or download the zip.
-- pip install mitene_download in command prompt or terminal.
+- pip install -r requirements.txt in command prompt or terminal.
     
 ## Usage
 
@@ -30,19 +30,20 @@ From mitene app, invite a family member for the web version and copy the URL
 
 - Saving comments
 - Cross platform
-- Organizes comments into the comments folder, and the media into downloads.
+- Organizes media accordignly.
 
 
 ## Changelog
 
 - Added and increased a timeout option.
-- Changed the layout of the code to display cleaner such as, "Comments saved" and "progress bar for downloads".
+- Changed the layout of the code to be user friendly and interactive. 
 - Optimized the code for cleaner operation, easier to read.
 - Removed the .tmp file writing, and made it to write files directly. 
 - Added the ability to write video media files extension (.mp4) previously not able in version 1.
 - Better network handling if lost connection.
-- Better exiting the program without causing errors.
-- Added the ability to pre-check local files before downloading the same files. 
+- Proper exiting the script without causing errors.
+- Added the ability to pre-check local files before downloading the same files.
+- Updated user menu.  
 
 
 ## Authors

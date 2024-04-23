@@ -21,6 +21,7 @@ Download media from [Mitene](https://mitene.us/) & [Family Album](https://family
 
 From mitene app, invite a family member for the web version and copy the URL 
 ( that should be something like https://mitene.us/f/abcd123456 )
+- python mitene_download.py
 - python mitene_download.py <INSERT_URL>
 - python mitene_download.py <INSERT_URL> --password <INSERT_PASSWORD>
 

@@ -48,7 +48,7 @@ From mitene app, invite a family member for the web version and copy the URL
 
 ## Authors
 
-- [@perrinjerome](https://github.com/perrinjerome) Jérome Perrin
-- [@suasive93](https://github.com/suasive93) Me
+- [@perrinjerome](https://github.com/perrinjerome) Jérome Perrin (main developer)
+- [@suasive93](https://github.com/suasive93) Me (improved existing code)
 
 

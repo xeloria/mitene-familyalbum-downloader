@@ -49,6 +49,6 @@ From mitene app, invite a family member for the web version and copy the URL
 ## Authors
 
 - [@perrinjerome](https://github.com/perrinjerome) Jérome Perrin (main developer)
-- [@suasive93](https://github.com/xeloria/) Me (improved existing code)
+- [@xeloria](https://github.com/xeloria/) Me (improved existing code)
 
 

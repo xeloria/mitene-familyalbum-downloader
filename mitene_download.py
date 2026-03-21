@@ -3,6 +3,8 @@ This module provides functionality to download and manage media from album URLs.
 It supports asynchronous downloads, database caching, and error handling.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -14,12 +16,15 @@ import random
 import re
 import secrets
 from pathlib import Path
-from typing import Awaitable, Optional, Tuple, List, Callable, Dict, Any, Union
+from typing import Awaitable, Optional, Tuple, List, Callable, Dict, Any, Union, TYPE_CHECKING
 from tqdm import tqdm
 import aiofiles
 import aiofiles.os
 from bs4 import BeautifulSoup
 import piexif
+
+if TYPE_CHECKING:
+    from aiohttp import ClientSession, ClientPayloadError, ClientError
 
 # Setup logging
 logging.basicConfig(
@@ -109,7 +114,7 @@ class AsyncPageIterator:
         self.page = 0
         self.last_page = False
 
-    def __aiter__(self) -> 'AsyncPageIterator':
+    def __aiter__(self) -> AsyncPageIterator:
         return self
 
     async def __anext__(self) -> Dict[str, Any]:

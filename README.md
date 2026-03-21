@@ -1,54 +1,81 @@
+# Mitene Family Album Downloader (v6.0)
 
-# Mitene & Family-Album Downloader 5
+A powerful, asynchronous Python tool to download and archive media from Mitene (FamilyAlbum) URLs. This tool handles large albums efficiently, organizes media by date, injects EXIF metadata, and supports automated sync modes.
 
-Download media from [Mitene](https://mitene.us/) & [Family Album](https://family-album.com/). This script allows you to download photos, videos, and comments from the specified album URL and keep them stored locally on your machine.
+## ✨ Features (v6.0 Updates)
 
+*   **⚡ Asynchronous Downloading:** Downloads multiple files concurrently for maximum speed.
+*   **📂 Smart Organization:** Automatically saves files into `YYYY/MM` subfolders based on when they were taken.
+*   **📸 EXIF Metadata Injection:** Uses `piexif` to write the original "Date Taken" timestamp into the JPEG headers of downloaded photos.
+*   **🧠 Database Caching:** Uses `aiosqlite` to track downloads, allowing you to resume interrupted downloads and skip files that are already up-to-date.
+*   **🔄 Sync / Watch Mode:** A headless `--sync` mode designed for automated tasks (Cron/Task Scheduler) that bypasses interactive prompts.
+*   **🗓️ Advanced Filtering:** Filter your downloads by `--start-date`, `--end-date`, or `--media-type` (photos, videos, or all).
+*   **💬 Rich Comment Exporting:** Save family comments as either Markdown files (`.md`), raw structured data (`.json`), or both.
+*   **⚙️ Configuration Support:** Supports a `config.json` file to save your default settings, destination paths, and preferences.
+*   **🛡️ Robust Parsing:** Uses `BeautifulSoup4` for reliable HTML parsing and session handling.
 
-## Demo
-![gif](https://github.com/suasive93/mitene-familyalbum-downloader/assets/20932109/9c313b0f-6b36-4e35-9c81-b612e07aa2e7)
+## 🚀 Installation
 
-## Requirements
-- Python 3.11 and up.
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/suasive93/mitene-familyalbum-downloader-main.git
+    cd mitene-familyalbum-downloader-main
+    ```
 
-## Installation
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-- Install python.
-- Clone the git repo or download the zip.
-- pip install -r requirements.txt in command prompt or terminal.
-    
-## Usage
+## 📖 Usage
 
-From mitene app, invite a family member for the web version and copy the URL 
-( that should be something like https://mitene.us/f/abcd123456 )
-- python mitene_download.py
-- python mitene_download.py <INSERT_URL>
-- python mitene_download.py <INSERT_URL> --password <INSERT_PASSWORD>
+### Interactive Mode
+Simply run the script to enter the interactive menu:
+```bash
+python mitene_download.py
+```
+From here you can add album URLs, manage your saved albums, and start downloads.
 
+### Command Line Mode
+Run the script with arguments to bypass the menu:
+```bash
+python mitene_download.py --url <URL> --dest ./my_backup --media-type photos
+```
 
+### Automation / Sync Mode
+To run the script as a background task for all your saved albums:
+```bash
+python mitene_download.py --sync
+```
 
-## Features
+## 🛠️ Configuration (`config.json`)
 
-- Saving comments
-- Cross platform
-- Organizes media accordignly.
+You can create a `config.json` in the project root to store your defaults:
 
+```json
+{
+  "dest": "files",
+  "verbose": false,
+  "media_type": "all",
+  "comment_format": "both",
+  "sync": false,
+  "start_date": "2020-01-01"
+}
+```
 
-## Changelog
+## 📝 CLI Arguments Reference
 
-- Added and increased a timeout option.
-- Changed the layout of the code to be user friendly and interactive. 
-- Optimized the code for cleaner operation, easier to read.
-- Removed the .tmp file writing, and made it to write files directly. 
-- Added the ability to write video media files extension (.mp4) previously not able in version 1.
-- Better network handling if lost connection.
-- Proper exiting the script without causing errors.
-- Added the ability to pre-check local files before downloading the same files.
-- Updated user menu.  
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| `--url` | The album URL to download from | None |
+| `--password` | Password for the album (if required) | None |
+| `--dest` | Destination directory | `files` |
+| `--verbose` | Enable detailed logging | `False` |
+| `--sync` | Run in headless sync mode | `False` |
+| `--start-date` | Filter media taken AFTER (YYYY-MM-DD) | None |
+| `--end-date` | Filter media taken BEFORE (YYYY-MM-DD) | None |
+| `--media-type` | `photos`, `videos`, or `all` | `all` |
+| `--comment-format` | `md`, `json`, or `both` | `md` |
 
-
-## Authors
-
-- [@perrinjerome](https://github.com/perrinjerome) Jérome Perrin (main developer)
-- [@xeloria](https://github.com/xeloria/) Me (improved existing code)
-
-
+## ⚖️ License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

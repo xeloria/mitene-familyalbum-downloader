@@ -1,0 +1,23 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+cache.db
+
+# Downloads
+files/
+temp/
+
+# Environment
+.env
+venv/
+ENV/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Config
+config.json

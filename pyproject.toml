@@ -4,12 +4,15 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "mitene_download"
-version = "0.2.1" 
-requires-python = ">=3.6"
+version = "6.0.0" 
+requires-python = ">=3.14"
 dependencies  = [
     "aiohttp[speedups]",
     "argparse",     
-    "tqdm"
+    "tqdm",
+    "aiosqlite",
+    "beautifulsoup4",
+    "piexif"
 ]
 classifiers = ["License :: OSI Approved :: MIT License"]
 readme = "README.md"

@@ -12,8 +12,9 @@ import aiosqlite
 import argparse
 import random
 import re
+import secrets
 from pathlib import Path
-from typing import Awaitable, Optional, Tuple, List, Callable
+from typing import Awaitable, Optional, Tuple, List, Callable, Dict, Any, Union
 from tqdm import tqdm
 import aiofiles
 import aiofiles.os
@@ -29,10 +30,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class DatabaseCache:
-    def __init__(self, db_path: str = "cache.db"):
+    def __init__(self, db_path: str = "cache.db") -> None:
         self.db_path = db_path
 
-    async def init_db(self):
+    async def init_db(self) -> None:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """CREATE TABLE IF NOT EXISTS cache
@@ -57,7 +58,7 @@ class DatabaseCache:
             )
             await db.commit()
 
-    async def update_cache(self, url: str, cache_filename: str, status: str = "partial", downloaded_size: int = 0):
+    async def update_cache(self, url: str, cache_filename: str, status: str = "partial", downloaded_size: int = 0) -> None:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 "REPLACE INTO cache (url, cache_filename, status, downloaded_size) VALUES (?, ?, ?, ?)",
@@ -65,7 +66,7 @@ class DatabaseCache:
             )
             await db.commit()
 
-    async def save_album_url(self, url: str):
+    async def save_album_url(self, url: str) -> None:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("INSERT OR REPLACE INTO album_urls (url) VALUES (?)", (url,))
             await db.commit()
@@ -74,9 +75,9 @@ class DatabaseCache:
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute("SELECT url FROM album_urls") as cursor:
                 rows = await cursor.fetchall()
-                return [row[0] for row in rows]
+                return [str(row[0]) for row in rows]
 
-    async def delete_album_url(self, url: str):
+    async def delete_album_url(self, url: str) -> None:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("DELETE FROM album_urls WHERE url = ?", (url,))
             await db.commit()
@@ -88,7 +89,9 @@ class DatabaseCache:
                 "SELECT cache_filename, status, downloaded_size FROM cache WHERE url=?", (url,)
             ) as cursor:
                 row = await cursor.fetchone()
-                return row if row else (None, None, 0)
+                if row:
+                    return (str(row[0]), str(row[1]), int(row[2]))
+                return (None, None, 0)
 
 
 class TqdmUpTo(tqdm):
@@ -99,17 +102,17 @@ class TqdmUpTo(tqdm):
 
 
 class AsyncPageIterator:
-    def __init__(self, session: aiohttp.ClientSession, album_url: str, password: Optional[str]):
+    def __init__(self, session: aiohttp.ClientSession, album_url: str, password: Optional[str]) -> None:
         self.session = session
         self.album_url = album_url
         self.password = password
         self.page = 0
         self.last_page = False
 
-    def __aiter__(self):
+    def __aiter__(self) -> 'AsyncPageIterator':
         return self
 
-    async def __anext__(self):
+    async def __anext__(self) -> Dict[str, Any]:
         if self.last_page:
             raise StopAsyncIteration
 
@@ -129,7 +132,7 @@ class AsyncPageIterator:
                     
                 auth_token_input = soup.find("input", {"name": "authenticity_token"})
                 if auth_token_input:
-                    authenticity_token = auth_token_input.get("value")
+                    authenticity_token = str(auth_token_input.get("value", ""))
                     logger.info("Authenticating...")
                     auth_resp = await self.session.post(
                         f"{self.album_url}/login",
@@ -168,7 +171,7 @@ class AsyncPageIterator:
             return {"mediaFiles": []}
             
         try:
-            data = json.loads(media_match.group(1))
+            data: Dict[str, Any] = json.loads(media_match.group(1))
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON data: {e}")
             self.last_page = True
@@ -217,7 +220,8 @@ async def download_media(
                 r.raise_for_status()
 
                 mode = "ab" if downloaded_size > 0 else "wb"
-                total_size = int(r.headers.get("content-length", 0)) + downloaded_size
+                content_length = r.headers.get("content-length")
+                total_size = (int(content_length) if content_length else 0) + downloaded_size
                 
                 with TqdmUpTo(
                     unit="B",
@@ -285,7 +289,7 @@ async def download_media(
         except (aiohttp.ClientPayloadError, aiohttp.ClientError) as e:
             logger.warning(f"Error occurred during download of {media_name}: {e}")
             if attempt < max_retries - 1:
-                retry_wait = 2**attempt + random.uniform(0, 1)
+                retry_wait = 2**attempt + secrets.SystemRandom().uniform(0, 1)
                 logger.info(
                     f"Retrying download of {media_name} in {retry_wait:.2f} seconds (Attempt {attempt + 2}/{max_retries})..."
                 )
@@ -310,7 +314,7 @@ async def process_album(
     conn = aiohttp.TCPConnector(limit_per_host=4)
     async with aiohttp.ClientSession(connector=conn) as session:
         page_iterator = AsyncPageIterator(session, album_url, password)
-        download_coroutines = []
+        download_coroutines: List[Callable[[], Awaitable[None]]] = []
         comment_counter = 0
         
         logger.info(f"Starting to process album: {album_url}")
@@ -318,7 +322,7 @@ async def process_album(
         async for data in page_iterator:
             media_files = data.get("mediaFiles", [])
             for index, media in enumerate(media_files):
-                took_at_raw = media.get("tookAt", "")
+                took_at_raw = str(media.get("tookAt", ""))
                 
                 # Filter by date
                 date_str = took_at_raw.split(" ")[0] if took_at_raw else ""
@@ -334,9 +338,9 @@ async def process_album(
                 if args.media_type == "videos" and not is_video:
                     continue
 
-                filename = urllib.parse.urlparse(
-                    media.get("expiringVideoUrl", media.get("expiringUrl", ""))
-                ).path.split("/")[-1]
+                media_url = str(media.get("expiringVideoUrl") or media.get("expiringUrl", ""))
+                parsed_url = urllib.parse.urlparse(media_url)
+                filename = parsed_url.path.split("/")[-1]
                 
                 took_at = took_at_raw.replace(":", "_")
                 filename_formatted = f'{took_at}-{filename}'
@@ -358,14 +362,13 @@ async def process_album(
                     media_directory.mkdir(parents=True, exist_ok=True)
                     destination_filename = media_directory / filename_formatted
 
-                dl_url = f"{album_url}/media_files/{media['uuid']}/download"
+                uuid = str(media.get("uuid", ""))
+                dl_url = f"{album_url}/media_files/{uuid}/download"
                 cache_info = await db_cache.get_cache_info(dl_url)
                 
-                if cache_info and cache_info[1] == "complete":
-                    pass
-                else:
+                if not (cache_info and cache_info[1] == "complete"):
                     download_coroutines.append(
-                        lambda s=session, dc=db_cache, du=dl_url, df=destination_filename, mu=media["uuid"], v=verbose, idx=index + 1, total=len(media_files), tar=took_at_raw, q=args.sync: download_media(
+                        lambda s=session, dc=db_cache, du=dl_url, df=destination_filename, mu=uuid, v=verbose, idx=index + 1, total=len(media_files), tar=took_at_raw, q=bool(args.sync): download_media(
                             s, dc, du, df, mu, v, idx, total, tar, q
                         )
                     )
@@ -388,7 +391,7 @@ async def process_album(
                                             if not args.sync:
                                                 print(f"Comments being saved: {comment_counter}", end="\r")
                         except Exception as e:
-                            logger.error(f"Error writing comments for {media['uuid']}: {e}")
+                            logger.error(f"Error writing comments for {uuid}: {e}")
 
                     if args.comment_format in ("json", "both"):
                         comment_json_filename = comments_directory / (Path(filename_formatted).stem + ".json")
@@ -397,7 +400,7 @@ async def process_album(
                                 async with aiofiles.open(comment_json_filename, "w", encoding="utf-8") as comment_f:
                                     await comment_f.write(json.dumps(media["comments"], ensure_ascii=False, indent=2))
                         except Exception as e:
-                            logger.error(f"Error writing JSON comments for {media['uuid']}: {e}")
+                            logger.error(f"Error writing JSON comments for {uuid}: {e}")
 
         if not download_coroutines:
             logger.info("No new downloads found. All files are up to date.")
@@ -407,7 +410,7 @@ async def process_album(
             logger.info("All downloads completed successfully.")
 
 
-async def interactive_mode(args: argparse.Namespace):
+async def interactive_mode(args: argparse.Namespace) -> None:
     ascii_art = r"""
  __  __ _ _                    _____                      _                 _           
 |  \/  (_) |                  |  __ \                    | |               | |          
@@ -459,9 +462,9 @@ async def interactive_mode(args: argparse.Namespace):
             else:
                 password = None
 
-            destination_directory = args.dest
+            destination_directory = str(args.dest)
             verbose_input = input("Enable verbose logging (y/n): ").strip().lower()
-            verbose = True if verbose_input == "y" else args.verbose
+            verbose = True if verbose_input == "y" else bool(args.verbose)
 
             print("Starting the script. Please wait...")
             await process_album(album_url, password, destination_directory, verbose, args)
@@ -469,23 +472,23 @@ async def interactive_mode(args: argparse.Namespace):
             print("Invalid selection. Please try again.")
 
 
-async def sync_mode(args: argparse.Namespace):
+async def sync_mode(args: argparse.Namespace) -> None:
     db_cache = DatabaseCache()
     await db_cache.init_db()
     
-    urls = [args.url] if args.url else await db_cache.get_all_album_urls()
+    urls = [str(args.url)] if args.url else await db_cache.get_all_album_urls()
     if not urls:
         logger.warning("No URLs provided or found in database for sync.")
         return
         
     for url in urls:
         logger.info(f"Syncing album: {url}")
-        await process_album(url, args.password, args.dest, args.verbose, args)
+        await process_album(url, args.password, str(args.dest), bool(args.verbose), args)
 
 
 def main() -> None:
     config_path = Path("config.json")
-    config = {}
+    config: Dict[str, Any] = {}
     if config_path.exists():
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -512,7 +515,7 @@ def main() -> None:
         if args.sync:
             asyncio.run(sync_mode(args))
         elif args.url:
-            asyncio.run(process_album(args.url, args.password, args.dest, args.verbose, args))
+            asyncio.run(process_album(str(args.url), args.password, str(args.dest), bool(args.verbose), args))
         else:
             asyncio.run(interactive_mode(args))
     except (KeyboardInterrupt, EOFError):

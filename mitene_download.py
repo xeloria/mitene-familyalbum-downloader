@@ -9,22 +9,19 @@ import asyncio
 import json
 import logging
 import urllib.parse
-import aiohttp
-import aiosqlite
+import aiohttp  # type: ignore
+import aiosqlite  # type: ignore
 import argparse
 import random
 import re
 import secrets
 from pathlib import Path
 from typing import Awaitable, Optional, Tuple, List, Callable, Dict, Any, Union, TYPE_CHECKING
-from tqdm import tqdm
-import aiofiles
-import aiofiles.os
-from bs4 import BeautifulSoup
-import piexif
-
-if TYPE_CHECKING:
-    from aiohttp import ClientSession, ClientPayloadError, ClientError
+from tqdm import tqdm  # type: ignore
+import aiofiles  # type: ignore
+import aiofiles.os  # type: ignore
+from bs4 import BeautifulSoup  # type: ignore
+import piexif  # type: ignore
 
 # Setup logging
 logging.basicConfig(
@@ -107,7 +104,7 @@ class TqdmUpTo(tqdm):
 
 
 class AsyncPageIterator:
-    def __init__(self, session: aiohttp.ClientSession, album_url: str, password: Optional[str]) -> None:
+    def __init__(self, session: Any, album_url: str, password: Optional[str]) -> None:
         self.session = session
         self.album_url = album_url
         self.password = password
@@ -199,7 +196,7 @@ async def gather_with_concurrency(n: int, *tasks: Callable[[], Awaitable[None]])
 
 
 async def download_media(
-    session: aiohttp.ClientSession,
+    session: Any,
     db_cache: DatabaseCache,
     url: str,
     destination_filename: Path,
@@ -225,8 +222,8 @@ async def download_media(
                 r.raise_for_status()
 
                 mode = "ab" if downloaded_size > 0 else "wb"
-                content_length = r.headers.get("content-length")
-                total_size = (int(content_length) if content_length else 0) + downloaded_size
+                cl = r.headers.get("content-length")
+                total_size = (int(cl) if cl else 0) + downloaded_size
                 
                 with TqdmUpTo(
                     unit="B",
@@ -291,7 +288,7 @@ async def download_media(
                             logger.debug(f"Failed to inject EXIF for {destination_filename}: {e}")
 
             break
-        except (aiohttp.ClientPayloadError, aiohttp.ClientError) as e:
+        except Exception as e:
             logger.warning(f"Error occurred during download of {media_name}: {e}")
             if attempt < max_retries - 1:
                 retry_wait = 2**attempt + secrets.SystemRandom().uniform(0, 1)

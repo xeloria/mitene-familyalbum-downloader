@@ -50,10 +50,7 @@ legacy_tox_ini = """
     isolated_build = True
     package = wheel
     env_list =
-        py312
-        py311
-        py310
-        py39
+        py314
 
     [testenv]
     commands = mitene_download --help

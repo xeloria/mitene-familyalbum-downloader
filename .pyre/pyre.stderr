@@ -1,0 +1,3 @@
+2026-08-08 15:27:00,952 [PID 4179] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-08-08 15:27:00,952 [PID 4179] INFO Pyre binary is located at `/home/runner/.local/bin/pyre.bin`
+2026-08-08 15:27:00,952 [PID 4179] ERROR Invalid configuration: Cannot find any source files to analyze. Either `source_directories` or `targets` must be specified.

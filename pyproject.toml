@@ -1,25 +1,37 @@
 [build-system]
-requires = ["flit_core >=2,<4"]
+requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
 name = "mitene_download"
-version = "6.0.0" 
-requires-python = ">=3.14"
-dependencies  = [
+version = "7.0.0"
+requires-python = ">=3.11"
+dependencies = [
     "aiohttp[speedups]",
-    "argparse",     
+    "aiofiles",
     "tqdm",
     "aiosqlite",
     "beautifulsoup4",
-    "piexif"
+    "piexif",
 ]
-classifiers = ["License :: OSI Approved :: MIT License"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 readme = "README.md"
 dynamic = ["description"]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-aiohttp",
+]
+
 [project.license]
-file = "LICENSE"  
+file = "LICENSE"
 
 [project.urls]
 Source = "https://github.com/suasive93/mitene_download_2.1"
@@ -29,6 +41,13 @@ name = "Jérome Perrin"
 
 [[project.authors]]
 name = "Suasive93"
+
+[project.scripts]
+mitene_download = "mitene_download:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [tool.yapf]
 based_on_style = "pep8"
@@ -50,11 +69,13 @@ legacy_tox_ini = """
     isolated_build = True
     package = wheel
     env_list =
-        py314
+        py311
+        py312
+        py313
 
     [testenv]
-    commands = mitene_download --help
+    extras = dev
+    commands =
+        mitene_download --help
+        pytest {posargs}
 """
-
-[project.scripts]
-mitene_download = "mitene_download:main"

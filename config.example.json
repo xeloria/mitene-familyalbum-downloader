@@ -1,0 +1,16 @@
+{
+  "_comment": "Copy to config.json to set defaults. Any long CLI option can go here (use underscores, not dashes). CLI arguments override these. Do not store 'password' here in plaintext -- prefer --password-stdin.",
+
+  "dest": "archive",
+  "db": "cache.db",
+
+  "media_type": "all",
+  "comment_format": "both",
+
+  "concurrency": 4,
+  "filename_template": "{date}_{time}-{uuid8}",
+
+  "sidecar": true,
+  "index": true,
+  "verbose": false
+}

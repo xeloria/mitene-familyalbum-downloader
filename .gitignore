@@ -3,15 +3,30 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Database
-cache.db
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
 
-# Downloads
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Downloaded media and download state
 files/
+archive/
 temp/
+cache.db
+*.part
+
+# Generated gallery
+index.html
+index.csv
 
 # Environment
 .env
+.venv/
 venv/
 ENV/
 
@@ -19,5 +34,5 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Config
+# Local config (may contain a password) -- see config.example.json
 config.json

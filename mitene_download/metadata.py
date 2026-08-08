@@ -77,11 +77,12 @@ def write_exif(path: Path, item: MediaItem) -> bool:
         exif_dict.setdefault("GPS", {})
 
         if item.took_at is not None:
-            stamp = item.took_at.strftime("%Y:%m:%d %H:%M:%S").encode("ascii")
+            took_at = item.took_at
+            stamp = took_at.strftime("%Y:%m:%d %H:%M:%S").encode("ascii")
             exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = stamp
             exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = stamp
             exif_dict["0th"][piexif.ImageIFD.DateTime] = stamp
-            offset = item.took_at.strftime("%z")
+            offset = took_at.strftime("%z")
             if offset:
                 # "+0900" -> "+09:00", the format EXIF 2.31 expects.
                 formatted = f"{offset[:3]}:{offset[3:]}".encode("ascii")
@@ -93,8 +94,9 @@ def write_exif(path: Path, item: MediaItem) -> bool:
         if item.orientation:
             exif_dict["0th"][piexif.ImageIFD.Orientation] = int(item.orientation)
         if item.has_location:
-            assert item.latitude is not None and item.longitude is not None
-            exif_dict["GPS"].update(_gps_ifd(item.latitude, item.longitude))
+            lat, lng = item.latitude, item.longitude
+            if lat is not None and lng is not None:
+                exif_dict["GPS"].update(_gps_ifd(lat, lng))
 
         piexif.insert(piexif.dump(exif_dict), str(path))
         return True

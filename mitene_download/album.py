@@ -14,7 +14,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import aiohttp  # type: ignore
 
@@ -103,6 +103,7 @@ async def process_album(
     """Download one album according to ``options``."""
     album_url = normalize_album_url(album_url)
     db_cache = db_cache or DatabaseCache(options.db_path)
+    assert db_cache is not None
     await db_cache.init_db()
 
     destination = Path(options.dest)
@@ -162,7 +163,7 @@ async def process_album(
 
 
 async def _handle_item(
-    session: aiohttp.ClientSession,
+    session: Any,
     client: AlbumClient,
     db_cache: DatabaseCache,
     item: MediaItem,
@@ -204,9 +205,10 @@ async def _handle_item(
     summary.record(result)
 
     if result.outcome is Outcome.DOWNLOADED and result.path is not None:
-        apply_metadata(result.path, item, write_exif_data=options.write_exif)
+        _path = result.path
+        apply_metadata(_path, item, write_exif_data=options.write_exif)
         if options.sidecar:
-            write_sidecar(result.path, item)
+            write_sidecar(_path, item)
 
 
 # -- index ----------------------------------------------------------------

@@ -280,7 +280,7 @@ async def gather_with_concurrency(limit: int, *coroutines: Any) -> list[Any]:
         async with semaphore:
             return await coro
 
-    return await asyncio.gather(*(guarded(c) for c in coroutines))
+    return list(await asyncio.gather(*(guarded(c) for c in coroutines)))
 
 
 def raise_if_failed(results: list[DownloadResult]) -> None:

@@ -72,7 +72,7 @@ class AlbumClient:
 
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        session: Any,
         album_url: str,
         password: Optional[str] = None,
         max_retries: int = 4,

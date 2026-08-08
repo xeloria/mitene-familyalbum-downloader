@@ -196,3 +196,143 @@
 2026-08-08 15:45:41,955 [PID 4217] PERFORMANCE  Check_Postprocessing: 0.036s
 2026-08-08 15:45:41,955 [PID 4217] PERFORMANCE  Check (request kind: FullCheck): 0.979s
 2026-08-08 15:45:41,967 [PID 4217] ERROR Found 8 type errors!
+2026-08-08 15:48:25,332 [PID 4366] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-08-08 15:48:25,332 [PID 4366] INFO Pyre binary is located at `/home/runner/.local/bin/pyre.bin`
+2026-08-08 15:48:25,333 [PID 4366] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 1.
+2026-08-08 15:48:25,333 [PID 4366] INFO Consider setting the `--sequential` flag instead when the number of parallel workers is not greater than 1.
+2026-08-08 15:48:25,333 [PID 4366] INFO Writing arguments into /tmp/pyre_arguments_axqqg2j8.json...
+2026-08-08 15:48:25,333 [PID 4366] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader"
+    ]
+  },
+  "search_paths": [
+    "/home/runner/.local/lib/pyre_check/typeshed/stdlib",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/chevron",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/colorama",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/ldap3",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/paramiko",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/pycurl",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/pytz",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/regex",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/requests",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/retry",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/tqdm",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [],
+  "checked_directory_allowlist": [
+    "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader/.pyre",
+  "global_root": "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 12,
+    "micro": 3
+  },
+  "system_platform": "linux",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 1,
+  "additional_logging_sections": [
+    "-progress"
+  ],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-08-08 15:48:25,354 [PID 4366] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.001s
+2026-08-08 15:48:25,354 [PID 4366] PERFORMANCE  Initialized multiprocessing workers (workers: 1): 0.000s
+2026-08-08 15:48:25,355 [PID 4366] INFO  Building module tracker...
+2026-08-08 15:48:25,375 [PID 4366] PERFORMANCE  Module tracker built: 0.017s
+2026-08-08 15:48:25,375 [PID 4366] PERFORMANCE  Full environment built: 0.017s
+2026-08-08 15:48:25,375 [PID 4366] INFO  Collecting all definitions...
+2026-08-08 15:48:25,486 [PID 4366] PERFORMANCE  Collected definitions (defines: 110): 0.107s
+2026-08-08 15:48:25,486 [PID 4366] INFO  Checking 110 functions...
+2026-08-08 15:48:26,282 [PID 4366] PERFORMANCE  Check_TypeCheck (defines: 110, raw errors: 55): 0.805s
+2026-08-08 15:48:26,283 [PID 4366] MEMORY  Shared memory size post-typecheck (size: 1)
+2026-08-08 15:48:26,323 [PID 4366] ERROR Found 1 type error!
+2026-08-08 15:48:51,489 [PID 4381] INFO No binary specified, looking for `pyre.bin` in PATH
+2026-08-08 15:48:51,489 [PID 4381] INFO Pyre binary is located at `/home/runner/.local/bin/pyre.bin`
+2026-08-08 15:48:51,490 [PID 4381] INFO Could not determine the number of Pyre workers from configuration. Auto-set the value to 1.
+2026-08-08 15:48:51,490 [PID 4381] INFO Consider setting the `--sequential` flag instead when the number of parallel workers is not greater than 1.
+2026-08-08 15:48:51,490 [PID 4381] INFO Writing arguments into /tmp/pyre_arguments_bp06h0sx.json...
+2026-08-08 15:48:51,490 [PID 4381] DEBUG Arguments:
+{
+  "source_paths": {
+    "kind": "simple",
+    "paths": [
+      "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader"
+    ]
+  },
+  "search_paths": [
+    "/home/runner/.local/lib/pyre_check/typeshed/stdlib",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/ExifRead",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/PyMySQL",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/PyYAML",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/aiofiles",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/chevron",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/colorama",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/ldap3",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/mysqlclient",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/paramiko",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/psycopg2",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/pycurl",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/python-dateutil",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/pytz",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/regex",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/requests",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/retry",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/tqdm",
+    "/home/runner/.local/lib/pyre_check/typeshed/stubs/ujson"
+  ],
+  "excludes": [],
+  "checked_directory_allowlist": [
+    "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader"
+  ],
+  "checked_directory_blocklist": [],
+  "extensions": [],
+  "log_path": "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader/.pyre",
+  "global_root": "/home/runner/work/mitene-familyalbum-downloader/mitene-familyalbum-downloader",
+  "debug": false,
+  "python_version": {
+    "major": 3,
+    "minor": 12,
+    "micro": 3
+  },
+  "system_platform": "linux",
+  "shared_memory": {},
+  "parallel": true,
+  "number_of_workers": 1,
+  "additional_logging_sections": [
+    "-progress"
+  ],
+  "show_error_traces": false,
+  "strict": false
+}
+2026-08-08 15:48:51,511 [PID 4381] PERFORMANCE  Initialized shared memory (heap size: 8589934592, dep table pow: 1, hash table pow: 26): 0.001s
+2026-08-08 15:48:51,511 [PID 4381] PERFORMANCE  Initialized multiprocessing workers (workers: 1): 0.000s
+2026-08-08 15:48:51,511 [PID 4381] INFO  Building module tracker...
+2026-08-08 15:48:51,532 [PID 4381] PERFORMANCE  Module tracker built: 0.017s
+2026-08-08 15:48:51,532 [PID 4381] PERFORMANCE  Full environment built: 0.017s
+2026-08-08 15:48:51,532 [PID 4381] INFO  Collecting all definitions...
+2026-08-08 15:48:51,633 [PID 4381] PERFORMANCE  Collected definitions (defines: 110): 0.107s
+2026-08-08 15:48:51,633 [PID 4381] INFO  Checking 110 functions...
+2026-08-08 15:48:52,460 [PID 4381] PERFORMANCE  Check_TypeCheck (defines: 110, raw errors: 54): 0.818s
+2026-08-08 15:48:52,461 [PID 4381] MEMORY  Shared memory size post-typecheck (size: 1)
+2026-08-08 15:48:52,491 [PID 4381] PERFORMANCE  Check_Postprocessing: 0.035s
+2026-08-08 15:48:52,491 [PID 4381] PERFORMANCE  Check (request kind: FullCheck): 0.979s
+2026-08-08 15:48:52,502 [PID 4381] SUCCESS No type errors found

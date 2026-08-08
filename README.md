@@ -23,11 +23,21 @@ Plus: `--dry-run`, `--limit`, `--concurrency`, `--uploader`, `--sidecar`, `--ind
 
 ## 🚀 Installation
 
+Requires Python 3.11+.
+
+From the prebuilt wheel in `dist/` (recommended):
+
 ```bash
-pip install -e ".[dev]"
+pip install dist/mitene_download-7.0.0-py3-none-any.whl
 ```
 
-Requires Python 3.11+. (Plain `pip install -r requirements.txt` also works if you just want to run it.)
+Or from this source tree:
+
+```bash
+pip install .
+```
+
+Either way you get a `mitene_download` command that works from any directory.
 
 ## 📖 Usage
 
@@ -127,9 +137,12 @@ mitene_download/     the installed package -- runtime code only
   album.py             orchestration, index, repair
   options.py           run configuration
   cli.py               argument parsing and dispatch
-tests/               not installed; needed only to modify the tool
 config.example.json  copy to config.json to set defaults
+dist/                prebuilt wheel and sdist
 ```
+
+This is a runtime-only distribution: the test suite and CI configuration are
+kept in the development repository and are deliberately not shipped here.
 
 ## 🛠️ Configuration (`config.json`)
 
@@ -148,13 +161,9 @@ Copy `config.example.json` to `config.json`. Any long option can be defaulted th
 
 Storing `password` here means keeping it in plaintext; prefer `--password-stdin`.
 
-## 🧪 Development
+## 🧾 Release
 
-```bash
-pytest
-```
-
-The suite runs entirely offline against a local `aiohttp` server and fixtures modelled on real album pages. `mitene_download_v6_legacy.py.bak` is the previous single-file version, kept for reference only.
+This build is verified by a 70-test offline suite covering payload parsing, authentication, pagination, resume behaviour, EXIF writing and cache migration. The suite lives in the development repository; see [CHANGELOG.md](CHANGELOG.md) for what changed in this version.
 
 ## ⚖️ License
 

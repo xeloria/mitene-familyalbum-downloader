@@ -35,5 +35,8 @@ name = "Jérome Perrin"
 [[project.authors]]
 name = "Suasive93"
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [project.scripts]
 mitene_download = "mitene_download:main"

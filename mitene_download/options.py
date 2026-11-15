@@ -26,7 +26,10 @@ class Options:
     concurrency: int = 4
     album_concurrency: int = 1
     max_retries: int = 4
+    timeout: int = 1200  # per-download read timeout, in seconds
+    request_timeout: int = 120  # album page / login request timeout
     dry_run: bool = False
+    incremental: bool = False
     quiet: bool = False
     verbose: bool = False
 
@@ -35,4 +38,5 @@ class Options:
     comment_format: str = "md"  # md | json | both | none
     sidecar: bool = False
     write_exif: bool = True
+    use_exiftool: bool = False
     index: bool = False

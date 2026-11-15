@@ -23,6 +23,14 @@ class ParseError(MiteneError):
     """The album page did not contain the ``gon.media`` payload we expect."""
 
 
+class AlbumNotFoundError(MiteneError):
+    """The share link is unknown, expired, or its browser account was disabled."""
+
+
+class InvitationLinkError(MiteneError):
+    """A one-time ``/2d/...`` invitation link, not a reusable album link."""
+
+
 class DownloadError(MiteneError):
     """A media file could not be retrieved after all retries."""
 

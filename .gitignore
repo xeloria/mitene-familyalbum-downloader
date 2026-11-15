@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+*.whl
+*.tar.gz
+
+# Local state and output -- config.json may contain an album password.
+cache.db
+config.json
+archive/
+files/
+*.part
+
+# OS noise
+.DS_Store
+Thumbs.db

@@ -39,6 +39,7 @@ CONTENT_TYPE_EXTENSIONS: Dict[str, str] = {
     "image/webp": ".webp",
     "image/heic": ".heic",
     "image/heif": ".heif",
+    "image/avif": ".avif",
     "image/tiff": ".tiff",
     "video/mp4": ".mp4",
     "video/quicktime": ".mov",
@@ -52,6 +53,14 @@ VIDEO_MEDIA_TYPES = frozenset({"movie", "video"})
 # Characters no mainstream filesystem enjoys, plus control characters.
 _UNSAFE = re.compile(r'[\x00-\x1f<>:"/\\|?*]')
 
+# Windows refuses to create files whose *stem* is one of these, with or
+# without an extension (``CON.jpg`` is just as invalid as ``CON``).
+_RESERVED_STEMS = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
 DEFAULT_FILENAME_TEMPLATE = "{date}_{time}-{uuid8}"
 
 
@@ -59,6 +68,8 @@ def sanitize_filename(name: str) -> str:
     """Make ``name`` safe on Windows, macOS and Linux."""
     cleaned = _UNSAFE.sub("_", name).replace(" ", "_")
     cleaned = re.sub(r"_+", "_", cleaned).strip("._ ")
+    if cleaned.split(".")[0].upper() in _RESERVED_STEMS:
+        cleaned = f"_{cleaned}"
     return cleaned or "unnamed"
 
 
@@ -206,8 +217,16 @@ class MediaItem:
 
     @property
     def has_location(self) -> bool:
-        """True when GPS is present and not the ``0, 0`` "unknown" sentinel."""
+        """True when GPS is present, in range, and not the ``0, 0`` sentinel.
+
+        Out-of-range values are treated as absent rather than written to EXIF,
+        where they would produce a corrupt GPS block.
+        """
         if self.latitude is None or self.longitude is None:
+            return False
+        if not (-90.0 <= self.latitude <= 90.0):
+            return False
+        if not (-180.0 <= self.longitude <= 180.0):
             return False
         return not (self.latitude == 0 and self.longitude == 0)
 

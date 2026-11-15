@@ -9,15 +9,21 @@ touches the fields it was given.
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import aiosqlite  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+# Concurrent downloads (and, in sync mode, concurrent albums) each open their
+# own connection. Without a busy timeout a writer that arrives while another
+# connection holds the write lock fails immediately with "database is locked".
+BUSY_TIMEOUT_SECONDS = 30.0
 
 CACHE_COLUMNS = (
     "cache_filename",
@@ -31,6 +37,7 @@ CACHE_COLUMNS = (
     "creation_date",
     "last_modified",
     "file_size",
+    "size_verified",
     "checksum",
     "expected_checksum",
     "download_count",
@@ -51,6 +58,17 @@ class DatabaseCache:
     def __init__(self, db_path: str = "cache.db") -> None:
         self.db_path = db_path
 
+    @asynccontextmanager
+    async def _connect(self) -> AsyncIterator[aiosqlite.Connection]:
+        """Open a connection that waits for a busy database instead of failing."""
+        async with aiosqlite.connect(
+            self.db_path, timeout=BUSY_TIMEOUT_SECONDS
+        ) as db:
+            # The timeout is per connection; the explicit PRAGMA also covers
+            # Python builds where sqlite3's timeout parameter is ignored.
+            await db.execute(f"PRAGMA busy_timeout = {int(BUSY_TIMEOUT_SECONDS * 1000)}")
+            yield db
+
     async def init_db(self) -> None:
         # sqlite will not create intermediate directories, and --db may point
         # somewhere that does not exist yet (e.g. inside a fresh --dest).
@@ -58,7 +76,11 @@ class DatabaseCache:
         if str(parent) not in ("", "."):
             parent.mkdir(parents=True, exist_ok=True)
 
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
+            # WAL lets readers proceed while a download is recording progress.
+            # The mode is persistent, so setting it once is enough.
+            await db.execute("PRAGMA journal_mode = WAL")
+            await db.execute("PRAGMA synchronous = NORMAL")
             await db.execute(
                 """CREATE TABLE IF NOT EXISTS cache
                    (url TEXT PRIMARY KEY,
@@ -73,6 +95,7 @@ class DatabaseCache:
                     creation_date TEXT,
                     last_modified TEXT,
                     file_size INTEGER,
+                    size_verified BOOLEAN DEFAULT FALSE,
                     checksum TEXT,
                     expected_checksum TEXT,
                     download_count INTEGER DEFAULT 0,
@@ -83,6 +106,11 @@ class DatabaseCache:
             )
             await db.execute(
                 "CREATE TABLE IF NOT EXISTS album_urls (url TEXT PRIMARY KEY)"
+            )
+            await db.execute(
+                """CREATE TABLE IF NOT EXISTS album_state
+                   (album_url TEXT PRIMARY KEY,
+                    completed_at TEXT NOT NULL)"""
             )
             await db.execute(
                 "CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT)"
@@ -106,6 +134,7 @@ class DatabaseCache:
             ("uuid", "TEXT"),
             ("took_at", "TEXT"),
             ("expected_checksum", "TEXT"),
+            ("size_verified", "BOOLEAN DEFAULT FALSE"),
         ):
             if column not in existing:
                 await db.execute(f"ALTER TABLE cache ADD COLUMN {column} {ddl}")
@@ -131,7 +160,7 @@ class DatabaseCache:
             f"INSERT INTO cache (url, {', '.join(columns)}) VALUES (?, {placeholders}) "
             f"ON CONFLICT(url) DO UPDATE SET {assignments}"
         )
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             await db.execute(sql, (url, *[payload[c] for c in columns]))
             await db.commit()
 
@@ -154,11 +183,30 @@ class DatabaseCache:
             status="complete",
             downloaded_size=size,
             file_size=size,
+            # Metadata writing may change the bytes (piexif rewrites JPEGs),
+            # so the size is only authoritative after mark_metadata_applied().
+            size_verified=False,
             checksum=checksum,
             last_modified=_now(),
             error_log=None,
             **extra,
         )
+
+    async def mark_metadata_applied(
+        self,
+        url: str,
+        size: int,
+        checksum: Optional[str] = None,
+    ) -> None:
+        """Record the final on-disk size after EXIF/sidecar processing."""
+        fields: Dict[str, Any] = {
+            "file_size": size,
+            "downloaded_size": size,
+            "size_verified": True,
+        }
+        if checksum:
+            fields["checksum"] = checksum
+        await self.upsert(url, **fields)
 
     async def mark_failed(self, url: str, error: str, retry_count: int) -> None:
         await self.upsert(
@@ -166,7 +214,7 @@ class DatabaseCache:
         )
 
     async def get_entry(self, url: str) -> Optional[Dict[str, Any]]:
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             db.row_factory = aiosqlite.Row
             async with db.execute("SELECT * FROM cache WHERE url=?", (url,)) as cursor:
                 row = await cursor.fetchone()
@@ -178,7 +226,7 @@ class DatabaseCache:
 
     async def find_by_uuid(self, uuid: str) -> List[Dict[str, Any]]:
         """Used by ``--repair`` to locate files written by earlier versions."""
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
                 "SELECT * FROM cache WHERE uuid=? OR url LIKE ?",
@@ -188,26 +236,70 @@ class DatabaseCache:
 
     async def reset(self, url: str) -> None:
         """Forget a file's progress so the next run starts it from scratch."""
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             await db.execute("DELETE FROM cache WHERE url=?", (url,))
             await db.commit()
+
+    async def update_filename(self, old: str, new: str) -> int:
+        """Point a cache row at a renamed file (used by ``--repair``).
+
+        ``--repair`` renames files on disk, but without this the cache would
+        still name the old path, and the next run would treat every repaired
+        file as missing and download the whole album again.
+        """
+        candidates = {old, str(Path(old).resolve())}
+        placeholders = ", ".join("?" for _ in candidates)
+        async with self._connect() as db:
+            cursor = await db.execute(
+                f"UPDATE cache SET cache_filename=? "
+                f"WHERE cache_filename IN ({placeholders})",
+                (new, *candidates),
+            )
+            await db.commit()
+            return cursor.rowcount or 0
 
     # -- saved albums -----------------------------------------------------
 
     async def save_album_url(self, url: str) -> None:
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             await db.execute(
                 "INSERT OR REPLACE INTO album_urls (url) VALUES (?)", (url,)
             )
             await db.commit()
 
     async def get_all_album_urls(self) -> List[str]:
-        async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute("SELECT url FROM album_urls") as cursor:
+        async with self._connect() as db:
+            async with db.execute(
+                "SELECT url FROM album_urls ORDER BY url"
+            ) as cursor:
                 return [str(row[0]) for row in await cursor.fetchall()]
 
     async def delete_album_url(self, url: str) -> None:
-        async with aiosqlite.connect(self.db_path) as db:
+        async with self._connect() as db:
             await db.execute("DELETE FROM album_urls WHERE url = ?", (url,))
             await db.commit()
         logger.info("Deleted URL: %s", url)
+
+    # -- album-level state ------------------------------------------------
+
+    async def mark_album_complete(self, album_url: str) -> None:
+        """Remember that pagination once ran to the end of this album.
+
+        ``--incremental`` only trusts an all-known page when this is set: an
+        earlier run stopped by ``--limit`` may legitimately have left older
+        items behind.
+        """
+        async with self._connect() as db:
+            await db.execute(
+                "INSERT INTO album_state (album_url, completed_at) VALUES (?, ?) "
+                "ON CONFLICT(album_url) DO UPDATE SET completed_at=excluded.completed_at",
+                (album_url, _now()),
+            )
+            await db.commit()
+
+    async def is_album_complete(self, album_url: str) -> bool:
+        async with self._connect() as db:
+            async with db.execute(
+                "SELECT 1 FROM album_state WHERE album_url=?", (album_url,)
+            ) as cursor:
+                return await cursor.fetchone() is not None

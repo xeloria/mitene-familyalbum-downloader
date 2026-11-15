@@ -8,9 +8,12 @@
   "comment_format": "both",
 
   "concurrency": 4,
+  "timeout": 1200,
   "filename_template": "{date}_{time}-{uuid8}",
 
   "sidecar": true,
   "index": true,
+  "incremental": false,
+  "use_exiftool": false,
   "verbose": false
 }

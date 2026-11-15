@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -30,6 +32,14 @@ def _deg_to_rational(value: float) -> Tuple[Tuple[int, int], ...]:
     minutes_float = (value - degrees) * 60
     minutes = int(minutes_float)
     seconds = round((minutes_float - minutes) * 60 * 10000)
+    # Rounding can push seconds to exactly 60 (or minutes to 60); carry it so
+    # the rational stays in the range EXIF readers accept.
+    if seconds >= 600000:
+        seconds -= 600000
+        minutes += 1
+    if minutes >= 60:
+        minutes -= 60
+        degrees += 1
     return ((degrees, 1), (minutes, 1), (seconds, 10000))
 
 
@@ -58,56 +68,135 @@ def set_file_times(path: Path, item: MediaItem) -> None:
         logger.debug("Could not set file times on %s: %s", path, exc)
 
 
-def write_exif(path: Path, item: MediaItem) -> bool:
-    """Write date, GPS, orientation and camera model into a JPEG.
+def _exiftool_command(
+    path: Path, item: MediaItem
+) -> Optional[List[str]]:
+    """Build an explicit (never shell-interpreted) exiftool invocation."""
+    executable = shutil.which("exiftool")
+    if executable is None:
+        return None
 
-    Returns ``True`` when EXIF was written. Non-JPEG files are skipped (piexif
-    only handles JPEG/TIFF) and left to :func:`set_file_times` and the sidecar.
-    """
-    if path.suffix.lower() not in JPEG_SUFFIXES:
+    command = [executable, "-q", "-q", "-overwrite_original"]
+    if item.took_at is not None:
+        stamp = item.took_at.strftime("%Y:%m:%d %H:%M:%S")
+        command += [
+            f"-DateTimeOriginal={stamp}",
+            f"-CreateDate={stamp}",
+            f"-ModifyDate={stamp}",
+        ]
+        offset = item.took_at.strftime("%z")
+        if offset:
+            formatted = f"{offset[:3]}:{offset[3:]}"
+            command += [
+                f"-OffsetTimeOriginal={formatted}",
+                f"-OffsetTimeDigitized={formatted}",
+            ]
+    if item.device_model:
+        command.append(f"-Model={item.device_model}")
+    if item.orientation:
+        command.append(f"-Orientation#={int(item.orientation)}")
+    if item.has_location:
+        assert item.latitude is not None and item.longitude is not None
+        command += [
+            f"-GPSLatitude={abs(item.latitude)}",
+            f"-GPSLatitudeRef={'N' if item.latitude >= 0 else 'S'}",
+            f"-GPSLongitude={abs(item.longitude)}",
+            f"-GPSLongitudeRef={'E' if item.longitude >= 0 else 'W'}",
+        ]
+    # Absolute path: an argument starting with '-' would look like an option.
+    command.append(str(path.resolve()))
+    return command
+
+
+def write_with_exiftool(path: Path, item: MediaItem) -> bool:
+    """Write metadata to any format exiftool understands (HEIC, PNG, MP4...)."""
+    command = _exiftool_command(path, item)
+    if command is None:
+        logger.debug("exiftool is not on PATH; skipping metadata for %s", path)
         return False
-
     try:
-        try:
-            exif_dict: Dict[str, Any] = piexif.load(str(path))
-        except Exception:  # noqa: BLE001 - file may have no EXIF block at all
-            exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
-        exif_dict.setdefault("0th", {})
-        exif_dict.setdefault("Exif", {})
-        exif_dict.setdefault("GPS", {})
-
-        if item.took_at is not None:
-            stamp = item.took_at.strftime("%Y:%m:%d %H:%M:%S").encode("ascii")
-            exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = stamp
-            exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = stamp
-            exif_dict["0th"][piexif.ImageIFD.DateTime] = stamp
-            offset = item.took_at.strftime("%z")
-            if offset:
-                # "+0900" -> "+09:00", the format EXIF 2.31 expects.
-                formatted = f"{offset[:3]}:{offset[3:]}".encode("ascii")
-                exif_dict["Exif"][piexif.ExifIFD.OffsetTimeOriginal] = formatted
-                exif_dict["Exif"][piexif.ExifIFD.OffsetTimeDigitized] = formatted
-
-        if item.device_model:
-            exif_dict["0th"][piexif.ImageIFD.Model] = item.device_model.encode("utf-8")
-        if item.orientation:
-            exif_dict["0th"][piexif.ImageIFD.Orientation] = int(item.orientation)
-        if item.has_location:
-            assert item.latitude is not None and item.longitude is not None
-            exif_dict["GPS"].update(_gps_ifd(item.latitude, item.longitude))
-
-        piexif.insert(piexif.dump(exif_dict), str(path))
-        return True
-    except Exception as exc:  # noqa: BLE001 - metadata must never fail a download
-        logger.debug("Could not write EXIF to %s: %s", path, exc)
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=120, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.debug("exiftool could not run on %s: %s", path, exc)
         return False
+    if completed.returncode != 0:
+        logger.debug(
+            "exiftool exited %d for %s: %s",
+            completed.returncode,
+            path,
+            (completed.stderr or "").strip(),
+        )
+        return False
+    return True
 
 
-def apply_metadata(path: Path, item: MediaItem, write_exif_data: bool = True) -> None:
+def write_exif(path: Path, item: MediaItem, use_exiftool: bool = False) -> bool:
+    """Write date, GPS, orientation and camera model into a media file.
+
+    piexif handles JPEG/TIFF in-process. With ``use_exiftool`` the external
+    ``exiftool`` binary is preferred for every format, falling back to piexif
+    for JPEG when it is unavailable. Returns ``True`` when metadata was written.
+    """
+    if use_exiftool and write_with_exiftool(path, item):
+        return True
+
+    if path.suffix.lower() in JPEG_SUFFIXES:
+        try:
+            try:
+                exif_dict: Dict[str, Any] = piexif.load(str(path))
+            except Exception:  # noqa: BLE001 - file may have no EXIF block at all
+                exif_dict = {
+                    "0th": {},
+                    "Exif": {},
+                    "GPS": {},
+                    "1st": {},
+                    "thumbnail": None,
+                }
+            exif_dict.setdefault("0th", {})
+            exif_dict.setdefault("Exif", {})
+            exif_dict.setdefault("GPS", {})
+
+            if item.took_at is not None:
+                stamp = item.took_at.strftime("%Y:%m:%d %H:%M:%S").encode("ascii")
+                exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = stamp
+                exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = stamp
+                exif_dict["0th"][piexif.ImageIFD.DateTime] = stamp
+                offset = item.took_at.strftime("%z")
+                if offset:
+                    # "+0900" -> "+09:00", the format EXIF 2.31 expects.
+                    formatted = f"{offset[:3]}:{offset[3:]}".encode("ascii")
+                    exif_dict["Exif"][piexif.ExifIFD.OffsetTimeOriginal] = formatted
+                    exif_dict["Exif"][piexif.ExifIFD.OffsetTimeDigitized] = formatted
+
+            if item.device_model:
+                exif_dict["0th"][piexif.ImageIFD.Model] = (
+                    item.device_model.encode("utf-8")
+                )
+            if item.orientation:
+                exif_dict["0th"][piexif.ImageIFD.Orientation] = int(item.orientation)
+            if item.has_location:
+                assert item.latitude is not None and item.longitude is not None
+                exif_dict["GPS"].update(_gps_ifd(item.latitude, item.longitude))
+
+            piexif.insert(piexif.dump(exif_dict), str(path))
+            return True
+        except Exception as exc:  # noqa: BLE001 - metadata must never fail a download
+            logger.debug("Could not write EXIF with piexif to %s: %s", path, exc)
+    return False
+
+
+def apply_metadata(
+    path: Path,
+    item: MediaItem,
+    write_exif_data: bool = True,
+    use_exiftool: bool = False,
+) -> None:
     """Everything that happens to a file once its bytes are on disk."""
     if write_exif_data:
-        write_exif(path, item)
-    # After EXIF, since piexif.insert rewrites the file and resets mtime.
+        write_exif(path, item, use_exiftool=use_exiftool)
+    # After EXIF, since piexif.insert/exiftool rewrite the file and reset mtime.
     set_file_times(path, item)
 
 
@@ -175,17 +264,27 @@ def write_comments(
 
 # Magic-number sniffing, used by --repair to fix files an earlier version named
 # from the (wrong) rendition URL.
+# Ordered longest/most-specific first. Note the absence of a bare ``RIFF``
+# entry: RIFF is also AVI and WAV, so only the WEBP refinement below can
+# safely claim it.
 _MAGIC: List[Tuple[bytes, int, str]] = [
     (b"\xff\xd8\xff", 0, ".jpg"),
     (b"\x89PNG\r\n\x1a\n", 0, ".png"),
     (b"GIF8", 0, ".gif"),
-    (b"RIFF", 0, ".webp"),  # refined below by checking bytes 8:12
+    (b"ftypavif", 4, ".avif"),
+    (b"ftypavis", 4, ".avif"),
+    (b"ftypheic", 4, ".heic"),
+    (b"ftypheix", 4, ".heic"),
+    (b"ftypmif1", 4, ".heic"),
+    (b"ftypqt", 4, ".mov"),
+    (b"ftyp3gp", 4, ".3gp"),
+    (b"ftyp3g2", 4, ".3gp"),
+    (b"ftypM4V", 4, ".m4v"),
     (b"ftypmp4", 4, ".mp4"),
     (b"ftypisom", 4, ".mp4"),
     (b"ftypmp42", 4, ".mp4"),
-    (b"ftypqt", 4, ".mov"),
-    (b"ftypheic", 4, ".heic"),
-    (b"ftypmif1", 4, ".heic"),
+    (b"ftypiso2", 4, ".mp4"),
+    (b"ftypMSNV", 4, ".mp4"),
     (b"\x1aE\xdf\xa3", 0, ".webm"),
 ]
 
